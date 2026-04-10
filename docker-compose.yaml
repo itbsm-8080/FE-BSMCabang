@@ -1,0 +1,16 @@
+services:
+  app:
+    # Specify the Docker image version to use.
+    # For example, using "sakai_nuxt:latest" ensures you always run the latest version of the image after pulling it.
+    image: sakai_nuxt:v1.0.0
+    container_name: sakai_nuxt
+    restart: always
+    ports:
+      # Map port 3000 on the host to port 3003 inside the Docker container.
+      # This allows the application running on port 3003 in the container to be accessed via port 3000 on the host machine.
+      - "3001:3003"
+    environment:
+      # Set the application to listen on port 3003 inside the container.
+      NITRO_PORT: 3003
+      # Define the environment as "production" for optimal performance and security.
+      NODE_ENV: production

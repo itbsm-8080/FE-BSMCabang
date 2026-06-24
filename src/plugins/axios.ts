@@ -14,15 +14,20 @@ export default defineNuxtPlugin(() => {
         }
     })
 
-    // Request Interceptor - TAMBAHKAN CABANG KE HEADER
     api.interceptors.request.use(
         (request) => {
             const authStore = useAuthStore()
 
-            // 🔥 KIRIM CABANG DATABASE VIA HEADER
-            if (authStore.user?.cabang_database) {
-                request.headers['X-Cabang-Database'] = authStore.user.cabang_database
-                console.log('📌 Send cabang:', authStore.user.cabang_database)
+            // 🔥 KIRIM DATABASE CABANG (untuk switch database)
+            if (authStore.cabangDatabase) {
+                request.headers['X-Cabang-Database'] = authStore.cabangDatabase
+                console.log('📌 Send cabang database:', authStore.cabangDatabase)
+            }
+
+            // 🔥 KIRIM KODE CABANG (untuk filter data)
+            if (authStore.cabangKode) {
+                request.headers['X-Cabang-Kode'] = authStore.cabangKode
+                console.log('📌 Send cabang kode:', authStore.cabangKode)
             }
 
             return request

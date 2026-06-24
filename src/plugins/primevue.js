@@ -1,4 +1,4 @@
-import {defineNuxtPlugin} from '#app';
+import { defineNuxtPlugin } from '#app';
 import PrimeVue from 'primevue/config';
 import Timeline from 'primevue/timeline';
 import Message from 'primevue/message';
@@ -6,7 +6,7 @@ import Menu from 'primevue/menu';
 import Panel from 'primevue/panel';
 import Tree from 'primevue/tree';
 import Button from 'primevue/button';
-import {ConfirmationService, ToastService} from "primevue";
+import { ConfirmationService, ToastService } from "primevue";
 
 export default defineNuxtPlugin((nuxtApp) => {
     nuxtApp.vueApp.use(PrimeVue);

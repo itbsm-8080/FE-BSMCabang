@@ -17,7 +17,8 @@ const presetOptions = ref(Object.keys(presets));
 const menuMode = ref(layoutConfig.menuMode);
 const menuModeOptions = ref([
     { label: 'Static', value: 'static' },
-    { label: 'Overlay', value: 'overlay' }
+    { label: 'Overlay', value: 'overlay' },
+    { label: 'Horizontal', value: 'horizontal' }
 ]);
 
 const primaryColors = ref([

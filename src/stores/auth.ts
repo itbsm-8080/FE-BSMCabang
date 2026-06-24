@@ -1,25 +1,34 @@
-// stores/auth.ts
 import { defineStore } from 'pinia'
 
 export const useAuthStore = defineStore('auth', {
     state: () => ({
         user: null,
         token: null,
-        isLoggedIn: false
+        isLoggedIn: false,
+        cabangKode: null, // ✅ TAMBAHKAN
+        cabangDatabase: null // ✅ TAMBAHKAN
     }),
 
     actions: {
         setLoginData(user: any, token: string) {
-            console.log('📦 setLoginData called:', { user, token: token?.substring(0, 20) + '...' })
+            console.log('📦 setLoginData called:', {
+                user,
+                cabang_kode: user.cabang_kode,
+                cabang_database: user.cabang_database
+            })
 
             this.user = user
             this.token = token
             this.isLoggedIn = true
+            this.cabangKode = user.cabang_kode // ✅ SIMPAN KODE CABANG
+            this.cabangDatabase = user.cabang_database // ✅ SIMPAN DATABASE
 
             if (process.client) {
                 localStorage.setItem('auth_user', JSON.stringify(user))
                 localStorage.setItem('auth_token', token)
                 localStorage.setItem('isLoggedIn', 'true')
+                localStorage.setItem('cabang_kode', user.cabang_kode) // ✅ SIMPAN
+                localStorage.setItem('cabang_database', user.cabang_database) // ✅ SIMPAN
                 console.log('💾 Data saved to localStorage')
             }
         },
@@ -48,18 +57,19 @@ export const useAuthStore = defineStore('auth', {
                 const user = localStorage.getItem('auth_user')
                 const token = localStorage.getItem('auth_token')
                 const isLoggedIn = localStorage.getItem('isLoggedIn')
-
-                console.log('🔄 restoreSession:', { hasUser: !!user, hasToken: !!token, isLoggedIn })
+                const cabangKode = localStorage.getItem('cabang_kode')
+                const cabangDatabase = localStorage.getItem('cabang_database')
 
                 if (user && token && isLoggedIn === 'true') {
                     this.user = JSON.parse(user)
                     this.token = token
                     this.isLoggedIn = true
-                    console.log('✅ Session restored, token:', token.substring(0, 20) + '...')
+                    this.cabangKode = cabangKode // ✅ RESTORE
+                    this.cabangDatabase = cabangDatabase // ✅ RESTORE
                     return true
                 }
             }
             return false
-        }
+        },
     }
 })

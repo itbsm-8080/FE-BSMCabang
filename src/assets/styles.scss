@@ -2,3 +2,34 @@
 @forward 'layout/layout.scss';
 @forward 'primeicons/primeicons.css';
 @forward 'demo/flags/flags.css';
+
+* {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+.p-select-overlay {
+    .p-select-list {
+        padding: 0.25rem !important;
+    }
+
+    .p-select-option {
+        font-size: 0.688rem !important;
+        padding: 0.2rem 0.5rem !important;
+        min-height: 1.5rem !important;
+    }
+
+    .p-select-header {
+        padding: 0.25rem 0.5rem !important;
+
+        .p-inputtext.p-select-filter {
+            font-size: 0.688rem !important;
+            padding: 0.2rem 0.5rem !important;
+            height: 1.5rem !important;
+        }
+    }
+
+    .p-select-empty-message {
+        font-size: 0.688rem !important;
+        padding: 0.5rem !important;
+    }
+}

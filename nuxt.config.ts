@@ -7,9 +7,18 @@ export default defineNuxtConfig({
         '@primevue/nuxt-module',
         '@nuxtjs/tailwindcss',
         '@pinia/nuxt',
+        '@nuxtjs/google-fonts',
     ],
     srcDir: 'src/',
     css: ['/assets/styles.scss'],
+    googleFonts: {
+        families: {
+            'Plus+Jakarta+Sans': [300, 400, 500, 600, 700, 800],
+        },
+        display: 'swap',
+        preload: true,
+        useStylesheet: true,
+    },
     postcss: {
         plugins: {
             tailwindcss: {},
@@ -35,12 +44,15 @@ export default defineNuxtConfig({
             title: 'BSM Cabang'
         },
     },
+    router: {
+        middleware: ['tabs.global']
+    },
     pinia: {
         storesDirs: ['./stores/**'],
     },
     runtimeConfig: {
         public: {
-            apiBaseUrl: process.env.API_BASE_URL || 'http://localhost:8000/api'
+            apiBaseUrl: process.env.API_BASE_URL || 'http://localhost:4002/api'
         }
     },
     vite: {

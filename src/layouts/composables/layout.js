@@ -5,7 +5,7 @@ const layoutConfig = reactive({
     primary: 'emerald',
     surface: null,
     darkTheme: false,
-    menuMode: 'static'
+    menuMode: 'horizontal'  // ✅ Ganti default ke 'horizontal'
 });
 
 const layoutState = reactive({

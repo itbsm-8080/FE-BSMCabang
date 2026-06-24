@@ -1,8 +1,11 @@
 <script setup>
 
+// definePageMeta({
+//   layout: 'empty'
+// });
 definePageMeta({
-  layout: 'empty'
-});
+    layout: 'auth'
+})
 
 </script>
 

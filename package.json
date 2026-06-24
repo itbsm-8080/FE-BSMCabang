@@ -10,12 +10,18 @@
     "postinstall": "nuxt prepare"
   },
   "dependencies": {
+    "@fortawesome/fontawesome-svg-core": "^7.2.0",
+    "@fortawesome/free-solid-svg-icons": "^7.2.0",
+    "@fortawesome/vue-fontawesome": "^3.2.0",
+    "@nuxtjs/google-fonts": "^3.2.0",
     "@nuxtjs/tailwindcss": "^6.12.2",
     "@pinia/nuxt": "^0.11.3",
     "@primeuix/themes": "^1.0.0",
     "@primevue/core": "^4.5.4",
     "@primevue/forms": "^4.3.2",
     "@primevue/themes": "^4.5.4",
+    "@vueuse/motion": "^3.0.3",
+    "animate.css": "^4.1.1",
     "axios": "^1.14.0",
     "chart.js": "4.4.6",
     "nuxt": "^3.14.159",

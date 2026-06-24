@@ -17,8 +17,8 @@ const authStore = useAuthStore();
 const { $api } = useNuxtApp();
 
 definePageMeta({
-  layout: 'empty'
-});
+    layout: 'auth'  // ✅ Pakai layout auth
+})
 
 const fetchBranches = async () => {
   try {
@@ -68,25 +68,26 @@ const handleLogin = async () => {
 
    isLoading.value = true
   try {
-    const response = await $api.post('/login', {
-      cabang_kode: selectedBranch.value.kode,
-      username: username.value,
-      password: password.value
-    })
-    
-    if (response.data.success) {
-      // 🔥 SIMPAN TOKEN JUGA
-      authStore.setLoginData(response.data.data.user, response.data.token)
-      
-      toast.add({ 
-        severity: 'success', 
-        summary: 'Berhasil', 
-        detail: `Selamat datang, ${response.data.data.user.nama}!`, 
-        life: 3000 
-      })
-      router.push('/dashboard')
-    }
-  } catch (error: any) {
+        const response = await $api.post('/login', {
+            cabang_kode: selectedBranch.value.kode,
+            username: username.value,
+            password: password.value
+        })
+        
+        if (response.data.success) {
+            authStore.setLoginData(response.data.data.user, response.data.token)
+            
+            toast.add({ 
+                severity: 'success', 
+                summary: 'Berhasil', 
+                detail: `Selamat datang, ${response.data.data.user.nama}!`, 
+                life: 3000 
+            })
+            
+            // 🔥 Gunakan navigateTo (soft navigation)
+            await navigateTo('/dashboard')
+        }
+    } catch (error: any) {
     toast.add({ 
       severity: 'error', 
       summary: 'Error', 

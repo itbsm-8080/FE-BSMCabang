@@ -1,4 +1,3 @@
-// composables/useApi.ts
 import { useToast } from 'primevue/usetoast'
 
 export const useApi = () => {

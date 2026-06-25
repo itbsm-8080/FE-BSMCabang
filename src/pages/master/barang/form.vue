@@ -41,12 +41,12 @@
                     <FormField label="Gudang">
                         <Select v-model="form.Gudang" :options="gudangOptions" optionLabel="nama" optionValue="kode" placeholder="Pilih" class="compact-input" showClear />
                     </FormField>
-<FormField label="Pemasok">
-    <LookupSupplier 
-        v-model="form.PemasokKode"
-        v-model:displayName="form.PemasokNama"
-    />
-</FormField>
+                    <FormField label="Pemasok">
+                        <LookupSupplier 
+                            v-model="form.PemasokKode"
+                            v-model:displayName="form.PemasokNama"
+                        />
+                    </FormField>
                 </div>
 
                 <div class="form-row cols-3">
@@ -105,11 +105,17 @@
             </div>
             <div v-else></div>
             <div class="bottom-actions">
-                <Button label="Batal" severity="secondary" text size="small" @click="navigateTo('/master/barang')" />
-                <Button label="Simpan & Baru" severity="secondary" size="small" :loading="saving" @click="saveAndNew" />
-                <Button :label="isEdit ? 'Update' : 'Simpan'" severity="primary" size="small" :loading="saving" @click="saveAndClose" />
+                <Button label="Simpan" severity="primary" size="small" :loading="saving" @click="saveData" />
             </div>
         </div>
+
+        <!-- Dialog: Simpan Berhasil -->
+       <SuccessDialog 
+    v-model="showSuccessDialog"
+    message="Data barang berhasil disimpan."
+    @stay="stayHere"
+    @close="closeTab"
+/>
     </div>
 </template>
 
@@ -120,6 +126,8 @@ import { useToast } from 'primevue/usetoast'
 import FormSection from '~/components/common/FormSection.vue'
 import FormField from '~/components/common/FormField.vue'
 import LookupSupplier from '~/components/common/LookupSupplier.vue'
+import SuccessDialog from '~/components/common/SuccessDialog.vue'
+import { useTabsStore } from '~/stores/tabs'
 
 definePageMeta({ layout: 'default' })
 
@@ -128,9 +136,12 @@ const router = useRouter()
 const toast = useToast()
 const { $api } = useNuxtApp()
 
+const tabsStore = useTabsStore()
+
 const isEdit = ref(false)
 const saving = ref(false)
 const showValidation = ref(false)
+const showSuccessDialog = ref(false)
 const formId = ref<string | null>(null)
 
 const form = reactive({
@@ -158,24 +169,98 @@ const formatCurrency = (v: number) => new Intl.NumberFormat('id-ID', { style: 'c
 // Loaders
 const loadOptions = async () => { try { const { data } = await $api.get('/v1/barang/form-options'); if (data.success) { tipeOptions.value = data.data.tipe; kategoriOptions.value = data.data.kategori; gudangOptions.value = data.data.gudang } } catch (e) { console.error(e) } }
 const loadHargaKhusus = async (kode?: string) => { try { const t = kode || form.Kode; if (!t && !isEdit.value) { const { data } = await $api.get('/jenis-customer'); if (data.success) hargaKhususGrid.value = data.data.map((i: any) => ({ kode: i.kode, nama: i.nama, hargajual: 0 })); return }; const { data } = await $api.get(`/v1/barang/${t}/harga-khusus`); if (data.success) hargaKhususGrid.value = data.data.map((i: any) => ({ kode: i.kode, nama: i.nama, hargajual: parseFloat(i.hargajual) || 0 })) } catch (e) { console.error(e) } }
-const loadFormData = async (kode: string) => { try { const { data } = await $api.get(`/v1/barang/${kode}`); if (data.success) { const d = data.data; Object.assign(form, { Kode: d.Kode || '', Nama: d.Nama || '', Tipe: d.Tipe || '', Satuan: d.Satuan || '', Kategori: d.Kategori || '', Merk: d.Merk || '', Gudang: d.Gudang || '', PemasokKode: d.Pemasok || '', PemasokNama: '', HargaBeli: d.HargaBeli || 0, HargaJual: d.HargaJual || 0, HET: d.HET || 0, MinStok: d.MinStok || 0, MaxStok: d.MaxStok || 0, DiscSalesman: d.DiscSalesman || 0, status: { IsAktif: d.IsAktif == 1, IsStok: d.IsStok == 1, IsExpired: d.IsExpired == 1, ProductFocus: d.Product_Focus == 1 } }) } } catch (e: any) { toast.add({ severity: 'error', summary: 'Gagal', detail: 'Gagal memuat data', life: 3000 }) } }
+const loadFormData = async (kode: string) => {
+    try {
+        const { data } = await $api.get(`/v1/barang/${kode}`)
+        if (data.success) {
+            const d = data.data
+            Object.assign(form, {
+                Kode: d.Kode || '',
+                Nama: d.Nama || '',
+                Tipe: d.Tipe || '',
+                Satuan: d.Satuan || '',
+                Kategori: d.Kategori || '',
+                Merk: d.Merk || '',
+                Gudang: d.Gudang || '',
+                PemasokKode: d.Pemasok || '',
+                PemasokNama: d.PemasokNama || d.NamaPemasok || '', // 🔥 TAMBAHKAN INI
+                HargaBeli: d.HargaBeli || 0,
+                HargaJual: d.HargaJual || 0,
+                HET: d.HET || 0,
+                MinStok: d.MinStok || 0,
+                MaxStok: d.MaxStok || 0,
+                DiscSalesman: d.DiscSalesman || 0,
+                status: {
+                    IsAktif: d.IsAktif == 1,
+                    IsStok: d.IsStok == 1,
+                    IsExpired: d.IsExpired == 1,
+                    ProductFocus: d.Product_Focus == 1
+                }
+            })
+        }
+    } catch (e: any) {
+        toast.add({ severity: 'error', summary: 'Gagal', detail: 'Gagal memuat data', life: 3000 })
+    }
+}
+
 const generateKode = async () => { try { const { data } = await $api.get('/v1/barang/max-kode'); if (data.success) form.Kode = data.kode } catch (e) { console.error(e) } }
 
 // Save
 const saveData = async () => {
-    if (!isFormValid.value) { showValidation.value = true; toast.add({ severity: 'warn', summary: 'Validasi', detail: 'Lengkapi field wajib', life: 2000 }); return false }
+    if (!isFormValid.value) {
+        showValidation.value = true
+        toast.add({ severity: 'warn', summary: 'Validasi', detail: 'Lengkapi field wajib', life: 2000 })
+        return
+    }
+
     saving.value = true
     try {
-        const p: any = { Kode: form.Kode, Nama: form.Nama, Tipe: form.Tipe, Satuan: form.Satuan, Kategori: form.Kategori, Merk: form.Merk, Gudang: form.Gudang, Pemasok: form.PemasokKode, IsAktif: form.status.IsAktif ? 1 : 0, IsStok: form.status.IsStok ? 1 : 0, IsExpired: form.status.IsExpired ? 1 : 0, Product_Focus: form.status.ProductFocus ? 1 : 0, HargaBeli: form.HargaBeli, HargaJual: form.HargaJual, HET: form.HET, MinStok: form.MinStok, MaxStok: form.MaxStok, DiscSalesman: form.DiscSalesman, HargaKhusus: hargaKhususGrid.value }
+        const p: any = {
+            Kode: form.Kode, Nama: form.Nama, Tipe: form.Tipe, Satuan: form.Satuan,
+            Kategori: form.Kategori, Merk: form.Merk, Gudang: form.Gudang, Pemasok: form.PemasokKode,
+            IsAktif: form.status.IsAktif ? 1 : 0, IsStok: form.status.IsStok ? 1 : 0,
+            IsExpired: form.status.IsExpired ? 1 : 0, Product_Focus: form.status.ProductFocus ? 1 : 0,
+            HargaBeli: form.HargaBeli, HargaJual: form.HargaJual, HET: form.HET,
+            MinStok: form.MinStok, MaxStok: form.MaxStok, DiscSalesman: form.DiscSalesman,
+            HargaKhusus: hargaKhususGrid.value
+        }
         const res = isEdit.value ? await $api.put(`/v1/barang/${formId.value}`, p) : await $api.post('/v1/barang', p)
-        if (res.data.success) { toast.add({ severity: 'success', summary: 'Berhasil', detail: isEdit.value ? 'Diupdate' : 'Disimpan', life: 2000 }); return true }
-        return false
-    } catch (e: any) { toast.add({ severity: 'error', summary: 'Gagal', detail: e.response?.data?.message || 'Error', life: 3000 }); return false }
-    finally { saving.value = false }
+        if (res.data.success) {
+            showSuccessDialog.value = true
+        }
+    } catch (e: any) {
+        toast.add({ severity: 'error', summary: 'Gagal', detail: e.response?.data?.message || 'Error', life: 3000 })
+    } finally {
+        saving.value = false
+    }
 }
 
-const saveAndClose = async () => { if (await saveData()) navigateTo('/master/barang') }
-const saveAndNew = async () => { if (!await saveData()) return; isEdit.value = false; formId.value = null; showValidation.value = false; Object.assign(form, { Kode: '', Nama: '', Tipe: '', Satuan: '', Kategori: '', Merk: '', Gudang: '', PemasokKode: '', PemasokNama: '', HargaBeli: 0, HargaJual: 0, HET: 0, MinStok: 0, MaxStok: 0, DiscSalesman: 0, status: { IsAktif: true, IsStok: true, IsExpired: false, ProductFocus: false } }); await generateKode(); await loadHargaKhusus() }
+// 🔥 Tetap di sini - clear form
+const stayHere = () => {
+    showSuccessDialog.value = false
+    isEdit.value = false
+    formId.value = null
+    showValidation.value = false
+    Object.assign(form, {
+        Kode: '', Nama: '', Tipe: '', Satuan: '', Kategori: '', Merk: '',
+        Gudang: '', PemasokKode: '', PemasokNama: '',
+        HargaBeli: 0, HargaJual: 0, HET: 0, MinStok: 0, MaxStok: 0, DiscSalesman: 0,
+        status: { IsAktif: true, IsStok: true, IsExpired: false, ProductFocus: false }
+    })
+    hargaKhususGrid.value = []
+    generateKode()
+    loadHargaKhusus()
+}
+
+// 🔥 Tutup tab - kembali ke browse
+const closeTab = () => {
+    showSuccessDialog.value = false
+    // Tutup tab aktif
+    const currentTabId = tabsStore.activeTabId
+    if (currentTabId) {
+        tabsStore.closeTab(currentTabId)
+    }
+}
 
 onMounted(async () => { await loadOptions(); const id = route.query.id as string; if (id) { isEdit.value = true; formId.value = id; await loadFormData(id); await loadHargaKhusus(id) } else { await generateKode(); await loadHargaKhusus() } })
 </script>
@@ -220,11 +305,15 @@ onMounted(async () => { await loadOptions(); const id = route.query.id as string
     .bottom-actions { display: flex; gap: 0.375rem; flex-shrink: 0; margin-left: auto; }
 }
 
+.success-dialog {
+    display: flex; flex-direction: column; align-items: center; text-align: center; padding: 1rem 0;
+    i { font-size: 3rem; color: var(--green-500); margin-bottom: 0.75rem; }
+    p { margin: 0; color: var(--text-color-secondary); font-size: 0.875rem; }
+}
+
 :deep(.compact-input.p-inputtext),
 :deep(.compact-input .p-inputtext),
-:deep(.compact-input .p-inputnumber-input) { 
-    font-size: 0.75rem !important; padding: 0.25rem 0.5rem !important; height: 1.875rem !important; 
-}
+:deep(.compact-input .p-inputnumber-input) { font-size: 0.75rem !important; padding: 0.25rem 0.5rem !important; height: 1.875rem !important; }
 
 :deep(.compact-input.p-select) {
     font-size: 0.75rem !important; height: 1.875rem !important;

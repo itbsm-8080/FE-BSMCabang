@@ -1,11 +1,8 @@
 <template>
     <Teleport to="body">
         <Transition name="dialog-fade">
-            <div v-if="visible" class="dialog-overlay" @click.self="onStay">
+            <div v-if="visible" class="dialog-overlay" @click.self="onCancel">
                 <div class="dialog-bubble">
-                    <!-- Confetti Canvas -->
-                    <canvas ref="confettiCanvas" class="confetti-canvas"></canvas>
-                    
                     <!-- Decorative blobs -->
                     <div class="bubble-blob blob-1"></div>
                     <div class="bubble-blob blob-2"></div>
@@ -13,8 +10,10 @@
                     <!-- Icon Section -->
                     <div class="bubble-icon-wrapper">
                         <div class="bubble-icon-circle">
-                            <svg class="bubble-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-                                <polyline points="20 6 9 17 4 12"></polyline>
+                            <svg class="bubble-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                                <line x1="12" y1="9" x2="12" y2="13"></line>
+                                <line x1="12" y1="17" x2="12.01" y2="17"></line>
                             </svg>
                         </div>
                         <div class="bubble-ripple" v-for="i in 2" :key="i" :style="{ animationDelay: `${i * 0.2}s` }"></div>
@@ -22,7 +21,7 @@
                     
                     <!-- Text -->
                     <div class="bubble-text">
-                        <h3>Berhasil!</h3>
+                        <h3>{{ title }}</h3>
                         <p>{{ message }}</p>
                         <span v-if="subMessage" class="bubble-sub">{{ subMessage }}</span>
                     </div>
@@ -30,19 +29,21 @@
                     <!-- Actions -->
                     <div class="bubble-actions">
                         <button 
-                            v-if="showStayButton"
                             class="bubble-btn bubble-btn-secondary"
-                            @click="onStay"
+                            @click="onCancel"
+                            :disabled="loading"
                         >
-                            <i class="pi pi-pencil"></i>
-                            <span>{{ stayLabel }}</span>
+                            <i class="pi pi-times"></i>
+                            <span>{{ cancelLabel }}</span>
                         </button>
                         <button 
-                            class="bubble-btn bubble-btn-primary"
-                            @click="onClose"
+                            class="bubble-btn bubble-btn-danger"
+                            @click="onConfirm"
+                            :disabled="loading"
                         >
-                            <i :class="['pi', closeIcon]"></i>
-                            <span>{{ closeLabel }}</span>
+                            <i v-if="!loading" class="pi pi-trash"></i>
+                            <i v-else class="pi pi-spinner pi-spin"></i>
+                            <span>{{ confirmLabel }}</span>
                         </button>
                     </div>
                 </div>
@@ -52,103 +53,48 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onUnmounted, nextTick } from 'vue'
+import { ref, watch } from 'vue'
 
 const props = withDefaults(defineProps<{
     modelValue?: boolean
+    title?: string
     message?: string
     subMessage?: string
-    width?: string
-    showStayButton?: boolean
-    stayLabel?: string
-    closeLabel?: string
-    closeIcon?: string
+    confirmLabel?: string
+    cancelLabel?: string
+    loading?: boolean
 }>(), {
-    message: 'Data berhasil disimpan.',
-    showStayButton: true,
-    stayLabel: 'Tetap di Sini',
-    closeLabel: 'Tutup Tab',
-    closeIcon: 'pi-times'
+    title: 'Konfirmasi Hapus',
+    message: 'Yakin ingin menghapus data ini?',
+    subMessage: 'Tindakan ini tidak dapat dibatalkan.',
+    confirmLabel: 'Hapus',
+    cancelLabel: 'Batal'
 })
 
 const emit = defineEmits<{
     (e: 'update:modelValue', value: boolean): void
-    (e: 'stay'): void
-    (e: 'close'): void
+    (e: 'confirm'): void
+    (e: 'cancel'): void
 }>()
 
 const visible = ref(props.modelValue || false)
-const confettiCanvas = ref<HTMLCanvasElement | null>(null)
-let animationId: number | null = null
 
 watch(() => props.modelValue, (val) => {
     visible.value = val || false
-    if (val) nextTick(() => startConfetti())
-    else stopConfetti()
 })
 
 watch(visible, (val) => {
     emit('update:modelValue', val)
-    if (!val) stopConfetti()
 })
 
-const onStay = () => { visible.value = false; emit('stay') }
-const onClose = () => { visible.value = false; emit('close') }
-
-// 🔥 Mini Confetti
-interface Particle {
-    x: number; y: number; vx: number; vy: number
-    color: string; size: number; rotation: number
-    rotationSpeed: number; opacity: number
+const onConfirm = () => {
+    emit('confirm')
 }
 
-const particles: Particle[] = []
-const colors = ['#10b981', '#34d399', '#6ee7b7', '#f59e0b', '#fbbf24', '#3b82f6', '#8b5cf6', '#ec4899']
-
-const startConfetti = () => {
-    if (!confettiCanvas.value) return
-    const canvas = confettiCanvas.value
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-    
-    canvas.width = canvas.offsetWidth
-    canvas.height = canvas.offsetHeight
-    
-    particles.length = 0
-    for (let i = 0; i < 50; i++) {
-        particles.push({
-            x: canvas.width / 2, y: canvas.height / 2 - 20,
-            vx: (Math.random() - 0.5) * 6, vy: -Math.random() * 6 - 2,
-            color: colors[Math.floor(Math.random() * colors.length)],
-            size: Math.random() * 4 + 2, rotation: Math.random() * 360,
-            rotationSpeed: (Math.random() - 0.5) * 8, opacity: 1
-        })
-    }
-    
-    const animate = () => {
-        if (!ctx || !canvas) return
-        ctx.clearRect(0, 0, canvas.width, canvas.height)
-        for (const p of particles) {
-            p.x += p.vx; p.y += p.vy; p.vy += 0.12; p.rotation += p.rotationSpeed
-            p.opacity -= 0.005
-            if (p.opacity <= 0) continue
-            ctx.save(); ctx.translate(p.x, p.y); ctx.rotate((p.rotation * Math.PI) / 180)
-            ctx.globalAlpha = p.opacity; ctx.fillStyle = p.color
-            ctx.fillRect(-p.size / 2, -p.size / 4, p.size, p.size / 2); ctx.restore()
-        }
-        const alive = particles.filter(p => p.opacity > 0 && p.y < canvas.height + 10)
-        particles.length = 0; particles.push(...alive)
-        if (particles.length > 0) animationId = requestAnimationFrame(animate)
-    }
-    animate()
+const onCancel = () => {
+    visible.value = false
+    emit('cancel')
 }
-
-const stopConfetti = () => {
-    if (animationId) { cancelAnimationFrame(animationId); animationId = null }
-    particles.length = 0
-}
-
-onUnmounted(() => stopConfetti())
 </script>
 
 <style lang="scss" scoped>
@@ -178,33 +124,30 @@ onUnmounted(() => stopConfetti())
 // 🔥 DECORATIVE BLOBS
 .bubble-blob {
     position: absolute; border-radius: 50%; filter: blur(30px); opacity: 0.3; pointer-events: none;
-    &.blob-1 { width: 80px; height: 80px; background: #6ee7b7; top: -30px; right: -20px; }
-    &.blob-2 { width: 60px; height: 60px; background: #93c5fd; bottom: 40px; left: -20px; }
+    &.blob-1 { width: 80px; height: 80px; background: #fecaca; top: -30px; right: -20px; }
+    &.blob-2 { width: 60px; height: 60px; background: #fed7aa; bottom: 40px; left: -20px; }
 }
-
-// 🔥 CONFETTI
-.confetti-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
 
 // 🔥 ICON
 .bubble-icon-wrapper { position: relative; z-index: 2; margin-bottom: 1rem; }
 .bubble-icon-circle {
     width: 3.5rem; height: 3.5rem; border-radius: 1rem;
-    background: #f1f5f9;
+    background: #fef2f2;
     display: flex; align-items: center; justify-content: center;
     position: relative; z-index: 2;
-    animation: iconBounce 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    animation: iconShake 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
     
     .bubble-icon-svg {
         width: 1.75rem; height: 1.75rem;
-        color: #10b981;
-        animation: iconCheck 0.4s ease 0.3s both;
+        color: #ef4444;
+        animation: iconWarn 0.4s ease 0.3s both;
     }
 }
 
 .bubble-ripple {
     position: absolute; top: 50%; left: 50%;
     width: 3.5rem; height: 3.5rem; border-radius: 1rem;
-    border: 2px solid #6ee7b7;
+    border: 2px solid #fca5a5;
     transform: translate(-50%, -50%);
     animation: rippleOut 1.5s ease-out infinite;
     &:nth-child(2) { animation-delay: 0.2s; }
@@ -235,6 +178,7 @@ onUnmounted(() => stopConfetti())
     i { font-size: 0.75rem; }
     span { color: inherit; }
     &:active { transform: scale(0.96); }
+    &:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
 }
 
 // 🔥 SECONDARY BUTTON - ABU-ABU
@@ -244,7 +188,7 @@ onUnmounted(() => stopConfetti())
     border: 1.5px solid #e2e8f0 !important;
     i { color: #334155 !important; }
     span { color: #334155 !important; }
-    &:hover {
+    &:hover:not(:disabled) {
         background: #e2e8f0 !important;
         border-color: #cbd5e1 !important;
         transform: translateY(-1px);
@@ -255,17 +199,17 @@ onUnmounted(() => stopConfetti())
     }
 }
 
-// 🔥 PRIMARY BUTTON - HIJAU
-.bubble-btn-primary {
-    background: #10b981 !important;
+// 🔥 DANGER BUTTON - MERAH
+.bubble-btn-danger {
+    background: #ef4444 !important;
     color: #ffffff !important;
-    border: 1.5px solid #059669 !important;
-    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3) !important;
+    border: 1.5px solid #dc2626 !important;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3) !important;
     i { color: #ffffff !important; }
     span { color: #ffffff !important; }
-    &:hover {
-        background: #059669 !important;
-        box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4) !important;
+    &:hover:not(:disabled) {
+        background: #dc2626 !important;
+        box-shadow: 0 6px 16px rgba(239, 68, 68, 0.4) !important;
         transform: translateY(-1px);
         color: #ffffff !important;
         i { color: #ffffff !important; }
@@ -274,14 +218,16 @@ onUnmounted(() => stopConfetti())
 }
 
 // 🔥 ANIMATIONS
-@keyframes iconBounce {
+@keyframes iconShake {
     0% { transform: scale(0) rotate(-20deg); }
-    60% { transform: scale(1.15) rotate(5deg); }
-    80% { transform: scale(0.95) rotate(-2deg); }
+    40% { transform: scale(1.1) rotate(10deg); }
+    60% { transform: scale(1.1) rotate(-10deg); }
+    80% { transform: scale(1.05) rotate(5deg); }
     100% { transform: scale(1) rotate(0deg); }
 }
-@keyframes iconCheck {
+@keyframes iconWarn {
     0% { transform: scale(0); opacity: 0; }
+    80% { transform: scale(1.2); }
     100% { transform: scale(1); opacity: 1; }
 }
 @keyframes rippleOut {
@@ -308,20 +254,20 @@ onUnmounted(() => stopConfetti())
         box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.03);
     }
     .bubble-blob { opacity: 0.15; }
-    .bubble-icon-circle { background: rgba(255, 255, 255, 0.06); .bubble-icon-svg { color: #34d399; } }
+    .bubble-icon-circle { background: rgba(239, 68, 68, 0.15); .bubble-icon-svg { color: #f87171; } }
     .bubble-text { h3 { color: #e2e8f0; } p { color: #94a3b8; } .bubble-sub { color: #64748b; } }
-    .bubble-ripple { border-color: #059669; }
+    .bubble-ripple { border-color: #dc2626; }
     
     .bubble-btn-secondary {
         background: #334155 !important; color: #cbd5e1 !important; border-color: #475569 !important;
         i { color: #cbd5e1 !important; } span { color: #cbd5e1 !important; }
-        &:hover { background: #475569 !important; color: #e2e8f0 !important; i { color: #e2e8f0 !important; } span { color: #e2e8f0 !important; } }
+        &:hover:not(:disabled) { background: #475569 !important; color: #e2e8f0 !important; i { color: #e2e8f0 !important; } span { color: #e2e8f0 !important; } }
     }
     
-    .bubble-btn-primary {
-        background: #10b981 !important; color: #ffffff !important; border-color: #059669 !important;
+    .bubble-btn-danger {
+        background: #ef4444 !important; color: #ffffff !important; border-color: #dc2626 !important;
         i { color: #ffffff !important; } span { color: #ffffff !important; }
-        &:hover { background: #059669 !important; color: #ffffff !important; i { color: #ffffff !important; } span { color: #ffffff !important; } }
+        &:hover:not(:disabled) { background: #dc2626 !important; color: #ffffff !important; i { color: #ffffff !important; } span { color: #ffffff !important; } }
     }
 }
 </style>

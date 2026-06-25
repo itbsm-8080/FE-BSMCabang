@@ -200,16 +200,12 @@
         </div>
 
         <!-- Delete Dialog -->
-        <Dialog v-model:visible="deleteVisible" header="Konfirmasi Hapus" :modal="true" :style="{ width: '400px' }">
-            <div class="delete-dialog">
-                <i class="pi pi-exclamation-triangle"></i>
-                <p>Yakin ingin menghapus data ini?</p>
-            </div>
-            <template #footer>
-                <Button label="Batal" text size="small" @click="deleteVisible = false" />
-                <Button label="Hapus" severity="danger" size="small" :loading="deleteLoading" @click="handleDelete" />
-            </template>
-        </Dialog>
+        <DeleteDialog 
+            v-model="deleteVisible"
+            :loading="deleteLoading"
+            @confirm="handleDelete"
+            @cancel="deleteVisible = false"
+        />
     </div>
 </template>
 
@@ -220,6 +216,8 @@ import OverlayPanel from 'primevue/overlaypanel'
 import NumericFilter from '~/components/common/NumericFilter.vue'
 import { useMasterCrud, type MasterConfig } from '~/composables/useMasterCrud'
 import { useToast } from 'primevue/usetoast'
+import DeleteDialog from '~/components/common/DeleteDialog.vue'
+
 
 const firstRecord = ref(0)
 

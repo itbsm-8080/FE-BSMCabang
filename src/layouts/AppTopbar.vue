@@ -22,7 +22,6 @@
         <!-- Center: PrimeVue Menubar -->
         <div class="topbar-center" v-if="layoutConfig.menuMode === 'horizontal'">
             <Menubar :model="menuItems" class="clay-menubar">
-                <!-- 🔥 CUSTOM ITEM TEMPLATE -->
                 <template #item="{ item, props, hasSubmenu, root }">
                     <router-link 
                         v-if="item.to" 
@@ -141,17 +140,20 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useLayout } from "~/layouts/composables/layout.js"
 import AppConfigurator from "~/layouts/AppConfigurator.vue"
 import { useMenu } from "~/layouts/composables/menu.js"
 import { useAuthStore } from "~/stores/auth"
+import { useTabsStore } from '~/stores/tabs'
 import { useRoute } from 'vue-router'
+
 
 const route = useRoute()
 const { onMenuToggle, toggleDarkMode, isDarkTheme, layoutConfig } = useLayout()
-const { model: menuItems } = useMenu()
+const { model: menuItems, fetchMenu, resetMenu, isLoaded } = useMenu()
 const authStore = useAuthStore()
+const tabsStore = useTabsStore()
 const showUserMenu = ref(false)
 
 function isActive(path) {
@@ -168,6 +170,21 @@ const handleLogout = async () => {
     await authStore.logout()
     navigateTo('/auth/login')
 }
+
+watch(() => authStore.user?.kode || authStore.user?.USER_KODE, (newKode, oldKode) => {
+    if (newKode && newKode !== oldKode) {
+        console.log('👤 User changed, resetting menu:', oldKode, '→', newKode)
+        resetMenu()
+        fetchMenu()
+    }
+})
+
+onMounted(async () => {
+    tabsStore.initDefaultTabs()
+    if (!isLoaded.value) {
+        await fetchMenu()
+    }
+})
 </script>
 
 <style lang="scss" scoped>
@@ -259,23 +276,6 @@ const handleLogout = async () => {
         display: flex;
         flex-direction: column;
         line-height: 1;
-        
-        .brand-name {
-            font-size: 1.125rem;
-            font-weight: 800;
-            color: #1e293b;
-            letter-spacing: -0.02em;
-            transition: color 0.3s ease;
-        }
-        
-        .brand-sub {
-            font-size: 0.563rem;
-            font-weight: 600;
-            color: #94a3b8;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            transition: color 0.3s ease;
-        }
     }
 }
 
@@ -371,26 +371,18 @@ const handleLogout = async () => {
         margin-top: 0.5rem !important;
     }
     
-    :deep(.p-menuitem) {
-        margin: 0 !important;
-    }
+    :deep(.p-menuitem) { margin: 0 !important; }
     
     :deep(.p-menuitem-link) {
         border-radius: 0.75rem !important;
         padding: 0.625rem 0.875rem !important;
         font-size: 0.813rem !important;
         
-        .p-menuitem-icon {
-            color: #64748b !important;
-        }
-        
-        .p-menuitem-text {
-            color: #475569 !important;
-        }
+        .p-menuitem-icon { color: #64748b !important; }
+        .p-menuitem-text { color: #475569 !important; }
         
         &:hover {
             background: rgba(var(--primary-500-rgb, 16, 185, 129), 0.08) !important;
-            
             .p-menuitem-icon { color: var(--primary-500) !important; }
             .p-menuitem-text { color: var(--primary-700) !important; }
         }
@@ -413,7 +405,6 @@ const handleLogout = async () => {
     transition: background 0.3s ease;
 }
 
-// User button
 .user-btn {
     display: flex;
     align-items: center;
@@ -434,18 +425,17 @@ const handleLogout = async () => {
     }
 }
 
-// 🔥 AVATAR - INI YANG DIPERBAIKI
 .user-avatar {
     width: 2.25rem;
     height: 2.25rem;
     border-radius: 0.75rem;
-    background: var(--surface-200); // 🔥 Light mode: abu-abu terang
+    background: var(--surface-200);
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 0.688rem;
     font-weight: 700;
-    color: #334155; // 🔥 Teks gelap di light mode
+    color: #334155;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
     transition: all 0.3s ease;
 }
@@ -470,7 +460,6 @@ const handleLogout = async () => {
     &.rotate { transform: rotate(180deg); }
 }
 
-// Dropdown
 .user-dropdown {
     position: absolute; right: 0; top: calc(100% + 0.5rem);
     width: 16rem;
@@ -534,14 +523,11 @@ const handleLogout = async () => {
     transition: background 0.3s ease;
 }
 
-// ==================== ANIMATIONS ====================
 .fade-enter-active { transition: all 0.2s ease; }
 .fade-leave-active { transition: all 0.15s ease; }
 .fade-enter-from, .fade-leave-to { opacity: 0; transform: translateY(-4px); }
 
-// ==================== DARK MODE ====================
-// 🔥 PAKAI :deep() biar tembus scoped
-:deep(.app-dark) {
+:global(html.app-dark) {
     .topbar-clay {
         background: rgba(15, 15, 20, 0.9) !important;
         border-color: rgba(255, 255, 255, 0.06) !important;
@@ -555,9 +541,7 @@ const handleLogout = async () => {
         background: rgba(255, 255, 255, 0.04) !important;
         border-color: rgba(255, 255, 255, 0.06) !important;
         color: #cbd5e1 !important;
-        
         i { color: #cbd5e1 !important; }
-        
         &:hover {
             background: rgba(255, 255, 255, 0.08) !important;
             border-color: rgba(var(--primary-500-rgb, 16, 185, 129), 0.3) !important;
@@ -566,22 +550,15 @@ const handleLogout = async () => {
         }
     }
     
-    .brand-text {
-        .brand-name { color: #e2e8f0 !important; }
-        .brand-sub { color: #94a3b8 !important; }
-    }
-    
     .user-btn {
         background: rgba(255, 255, 255, 0.04) !important;
         border-color: rgba(255, 255, 255, 0.06) !important;
-        
         &:hover {
             background: rgba(255, 255, 255, 0.08) !important;
             border-color: rgba(var(--primary-500-rgb, 16, 185, 129), 0.3) !important;
         }
     }
     
-    // 🔥 AVATAR DARK MODE
     .user-avatar {
         background: rgba(255, 255, 255, 0.1) !important;
         color: #e2e8f0 !important;
@@ -594,31 +571,22 @@ const handleLogout = async () => {
     }
     
     .user-arrow { color: #94a3b8 !important; }
-    
-    .topbar-divider {
-        background: rgba(255, 255, 255, 0.08) !important;
-    }
+    .topbar-divider { background: rgba(255, 255, 255, 0.08) !important; }
     
     .menubar-item-link {
         color: #cbd5e1 !important;
-        
         i { color: #94a3b8 !important; }
         span { color: #cbd5e1 !important; }
         .submenu-icon { color: #94a3b8 !important; }
-        
         &:hover {
             background: rgba(255, 255, 255, 0.05) !important;
             border-color: rgba(255, 255, 255, 0.06) !important;
-            
             i { color: var(--primary-400) !important; }
             span { color: #e2e8f0 !important; }
-            .submenu-icon { color: var(--primary-400) !important; }
         }
-        
         &.active {
             background: rgba(var(--primary-500-rgb, 16, 185, 129), 0.15) !important;
             border-color: rgba(var(--primary-500-rgb, 16, 185, 129), 0.3) !important;
-            
             i { color: var(--primary-400) !important; }
             span { color: var(--primary-300) !important; }
         }
@@ -629,11 +597,9 @@ const handleLogout = async () => {
             background: rgba(15, 15, 20, 0.95) !important;
             border-color: rgba(255, 255, 255, 0.06) !important;
         }
-        
         :deep(.p-menuitem-link) {
             .p-menuitem-icon { color: #94a3b8 !important; }
             .p-menuitem-text { color: #cbd5e1 !important; }
-            
             &:hover {
                 background: rgba(255, 255, 255, 0.05) !important;
                 .p-menuitem-icon { color: var(--primary-400) !important; }
@@ -650,10 +616,8 @@ const handleLogout = async () => {
     .dropdown-header {
         background: rgba(255, 255, 255, 0.02) !important;
         border-bottom-color: rgba(255, 255, 255, 0.05) !important;
-        
         .dropdown-name { color: #e2e8f0 !important; }
         .dropdown-role { color: #94a3b8 !important; }
-        
         .dropdown-avatar {
             background: rgba(255, 255, 255, 0.1) !important;
             color: #e2e8f0 !important;
@@ -663,13 +627,11 @@ const handleLogout = async () => {
     .dropdown-item {
         color: #cbd5e1 !important;
         i { color: #94a3b8 !important; }
-        
         &:hover {
             background: rgba(255, 255, 255, 0.05) !important;
             color: var(--primary-300) !important;
             i { color: var(--primary-400) !important; }
         }
-        
         &.logout {
             color: #f87171 !important;
             i { color: #f87171 !important; }
@@ -680,12 +642,8 @@ const handleLogout = async () => {
     .dropdown-divider { background: rgba(255, 255, 255, 0.06) !important; }
 }
 
-// ==================== RESPONSIVE ====================
 @media (max-width: 991px) {
-    .topbar-clay { 
-        top: 0.5rem; left: 0.5rem; right: 0.5rem; 
-        padding: 0 0.75rem; border-radius: 1rem; 
-    }
+    .topbar-clay { top: 0.5rem; left: 0.5rem; right: 0.5rem; padding: 0 0.75rem; border-radius: 1rem; }
     .user-info { display: none; }
 }
 @media (max-width: 640px) {

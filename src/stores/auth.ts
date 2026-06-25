@@ -1,4 +1,6 @@
 import { defineStore } from 'pinia'
+import { useMenu } from '~/layouts/composables/menu.js'
+
 
 export const useAuthStore = defineStore('auth', {
     state: () => ({
@@ -31,6 +33,9 @@ export const useAuthStore = defineStore('auth', {
                 localStorage.setItem('cabang_database', user.cabang_database) // ✅ SIMPAN
                 console.log('💾 Data saved to localStorage')
             }
+
+            const { resetMenu } = useMenu()
+            resetMenu()
         },
 
         async logout() {
@@ -50,6 +55,9 @@ export const useAuthStore = defineStore('auth', {
                 localStorage.removeItem('auth_token')
                 localStorage.removeItem('isLoggedIn')
             }
+
+            const { resetMenu } = useMenu()
+            resetMenu()
         },
 
         restoreSession() {

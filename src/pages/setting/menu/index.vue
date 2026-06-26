@@ -124,7 +124,7 @@
         <Dialog v-model:visible="showItemDialog" :header="itemFormTitle" :modal="true" :style="{ width: '500px' }">
             <div class="form-grid">
                 <div class="field">
-                    <label>Nama Menu (Web) <span class="req">*</span></label>
+                    <label>Nama Menu <span class="req">*</span></label>
                     <InputText v-model="itemForm.MEN_NAMA2" placeholder="Contoh: Gudang" class="w-full compact-input" />
                 </div>
                 <div class="field">

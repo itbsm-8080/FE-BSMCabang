@@ -151,7 +151,7 @@ import { useRoute } from 'vue-router'
 
 const route = useRoute()
 const { onMenuToggle, toggleDarkMode, isDarkTheme, layoutConfig } = useLayout()
-const { model: menuItems, fetchMenu, resetMenu, isLoaded } = useMenu()
+const { model: menuItems, fetchMenu, isLoaded } = useMenu()
 const authStore = useAuthStore()
 const tabsStore = useTabsStore()
 const showUserMenu = ref(false)
@@ -181,6 +181,8 @@ watch(() => authStore.user?.kode || authStore.user?.USER_KODE, (newKode, oldKode
 
 onMounted(async () => {
     tabsStore.initDefaultTabs()
+    
+    // 🔥 Hanya fetch kalau belum loaded
     if (!isLoaded.value) {
         await fetchMenu()
     }

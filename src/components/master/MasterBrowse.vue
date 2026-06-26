@@ -27,8 +27,15 @@
             </div>
             
             <div class="toolbar-right">
-                <Button icon="pi pi-plus" label="Tambah" severity="primary" size="small" @click="openAddForm" />
-                <Button icon="pi pi-refresh" severity="secondary" text size="small" :loading="loading" @click="fetchData" />
+<Button 
+            v-if="canInsert"
+            icon="pi pi-plus" 
+            label="Tambah" 
+            severity="primary" 
+            size="small"
+            @click="openAddForm" 
+        />
+                        <Button icon="pi pi-refresh" severity="secondary" text size="small" :loading="loading" @click="fetchData" />
             </div>
         </div>
 
@@ -156,9 +163,17 @@
                 <Column header="Aksi" style="width: 5rem; text-align: center">
                     <template #body="slotProps">
                         <div class="action-buttons">
-                            <Button icon="pi pi-pencil" text rounded size="small" severity="info" @click="openEditForm(slotProps.data)" />
-                            <Button icon="pi pi-trash" text rounded size="small" severity="danger" @click="confirmDelete(slotProps.data)" />
-                        </div>
+<Button 
+            v-if="canEdit"
+            icon="pi pi-pencil" 
+            text rounded size="small" severity="info"
+            @click="openEditForm(slotProps.data)" />
+ <Button 
+            v-if="canDelete"
+            icon="pi pi-trash" 
+            text rounded size="small" severity="danger"
+            @click="confirmDelete(slotProps.data)" 
+        />                        </div>
                     </template>
                 </Column>
 
@@ -206,6 +221,9 @@
             @confirm="handleDelete"
             @cancel="deleteVisible = false"
         />
+
+                <PermissionGuard v-model="showPermDialog" :message="permMessage" />
+
     </div>
 </template>
 
@@ -217,6 +235,7 @@ import NumericFilter from '~/components/common/NumericFilter.vue'
 import { useMasterCrud, type MasterConfig } from '~/composables/useMasterCrud'
 import { useToast } from 'primevue/usetoast'
 import DeleteDialog from '~/components/common/DeleteDialog.vue'
+import PermissionGuard from '~/components/common/PermissionGuard.vue'
 
 
 const firstRecord = ref(0)
@@ -230,7 +249,9 @@ const {
     items, selectedItems, loading, pagination, searchKeyword,
     tableFilters, numericFilters, filterOptionsCache, detailDataCache,
     sortField, sortOrder, deleteVisible, deleteItem, deleteLoading,
-    fetchData, fetchAllData, refreshData, handleDelete, formatCurrency, formatDate
+    fetchData, fetchAllData, refreshData, handleDelete, formatCurrency, formatDate,
+     canInsert, canEdit, canDelete,
+    showPermDialog, permMessage
 } = useMasterCrud(props.config)
 
 // UI State

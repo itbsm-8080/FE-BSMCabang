@@ -1,6 +1,7 @@
 // composables/useMasterCrud.ts
 import { ref, reactive, computed } from 'vue'
 import { useToast } from 'primevue/usetoast'
+import { usePermission } from '~/composables/usePermission'
 
 export interface ColumnConfig {
     field: string
@@ -96,6 +97,14 @@ export const useMasterCrud = (config: MasterConfig) => {
     const deleteVisible = ref(false)
     const deleteItem = ref<any>(null)
     const deleteLoading = ref(false)
+
+    // PERMISSION
+    const { checkAccess, getMenuIdByRoute } = usePermission()
+    const canInsert = ref(false)
+    const canEdit = ref(false)
+    const canDelete = ref(false)
+    const showPermDialog = ref(false)
+    const permMessage = ref('')
 
     /**
      * Evaluate numeric/date condition
@@ -332,6 +341,43 @@ export const useMasterCrud = (config: MasterConfig) => {
         return new Date(value).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
     }
 
+    // 🔥 Init permission
+    const initPermission = () => {
+        const baseRoute = config.formRoute?.replace('/form', '') || config.endpoint.replace('/v1', '')
+
+        console.log('🔑 Permission check:')
+        console.log('  config.formRoute:', config.formRoute)
+        console.log('  baseRoute:', baseRoute)
+
+        const menuId = getMenuIdByRoute(baseRoute)
+        console.log('  menuId:', menuId)
+
+        if (menuId) {
+            const hak = checkAccess(menuId)
+            console.log('  hak:', hak)
+            canInsert.value = hak.insert
+            canEdit.value = hak.edit
+            canDelete.value = hak.delete
+        } else {
+            console.warn('⚠️ Menu not found for route:', baseRoute)
+        }
+    }
+
+    initPermission()
+
+    // 🔥 Guard functions
+    const guardAction = (action: 'insert' | 'edit' | 'delete'): boolean => {
+        const map = { insert: canInsert, edit: canEdit, delete: canDelete }
+        const labels = { insert: 'menambah', edit: 'mengedit', delete: 'menghapus' }
+
+        if (!map[action].value) {
+            permMessage.value = `Anda tidak memiliki hak untuk ${labels[action]} data.`
+            showPermDialog.value = true
+            return false
+        }
+        return true
+    }
+
     return {
         items,
         allData,
@@ -353,6 +399,12 @@ export const useMasterCrud = (config: MasterConfig) => {
         refreshData,
         handleDelete,
         formatCurrency,
-        formatDate
+        formatDate,
+        // Permission
+        canInsert,
+        canEdit,
+        canDelete,
+        showPermDialog,
+        permMessage,
     }
 }

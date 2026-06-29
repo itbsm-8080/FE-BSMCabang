@@ -10,7 +10,7 @@ export default defineNuxtConfig({
         '@nuxtjs/google-fonts',
     ],
     srcDir: 'src/',
-    css: ['/assets/styles.scss'],
+    css: ['/assets/styles.scss', '@webdatarocks/webdatarocks/webdatarocks.min.css'],
     googleFonts: {
         families: {
             'Plus+Jakarta+Sans': [300, 400, 500, 600, 700, 800],

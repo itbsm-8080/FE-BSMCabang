@@ -131,7 +131,7 @@ export const barangFormFields: FormFieldConfig[] = [
 export const barangMasterConfig: MasterConfig = {
     endpoint: '/v1/barang',
     primaryKey: 'Kode',
-    formRoute: '/master/barang/form',
+    formRoute: '/persediaan/barang/form',
     columns: barangColumns,
     formFields: barangFormFields,
     expansion: {

@@ -27,7 +27,7 @@ export interface ColumnConfig {
 export interface FormFieldConfig {
     field: string
     label: string
-    type: 'text' | 'textarea' | 'number' | 'currency' | 'date' | 'select' | 'boolean'
+    type: 'text' | 'textarea' | 'number' | 'currency' | 'date' | 'select' | 'boolean' | 'lookup'
     required?: boolean
     placeholder?: string
     options?: { label: string; value: any }[]
@@ -35,6 +35,11 @@ export interface FormFieldConfig {
     icon?: string
     fullWidth?: boolean
     helpText?: string
+    disabled?: boolean
+    colSpan?: number
+    lookupConfig?: any
+    min?: number
+    max?: number
 }
 
 export interface ExpansionConfig {
@@ -60,6 +65,11 @@ export interface MasterConfig {
     formFields: FormFieldConfig[]
     expansion?: ExpansionConfig
     formRoute?: string
+    showPeriod?: boolean
+    formTitle?: string
+    formIcon?: string
+    optionsEndpoint?: string
+    gridConfig?: any
 }
 
 export const useMasterCrud = (config: MasterConfig) => {
@@ -98,23 +108,30 @@ export const useMasterCrud = (config: MasterConfig) => {
     const deleteItem = ref<any>(null)
     const deleteLoading = ref(false)
 
-    // PERMISSION
+    // 🔥 PERMISSION
     const { checkAccess, getMenuIdByRoute } = usePermission()
     const canInsert = ref(false)
     const canEdit = ref(false)
     const canDelete = ref(false)
-    const showPermDialog = ref(false)
-    const permMessage = ref('')
 
-    /**
-     * Evaluate numeric/date condition
-     */
+    // ==================== PERMISSION INIT ====================
+    const initPermission = () => {
+        const baseRoute = config.formRoute?.replace('/form', '') || config.endpoint.replace('/v1', '')
+        const menuId = getMenuIdByRoute(baseRoute)
+
+        if (menuId) {
+            const hak = checkAccess(menuId)
+            canInsert.value = hak.insert
+            canEdit.value = hak.edit
+            canDelete.value = hak.delete
+        }
+    }
+
+    // ==================== EVALUATE CONDITION ====================
     const evaluateCondition = (row: any, field: string, operator: string, val1: any, val2: any, isDate: boolean): boolean => {
         const rawVal = row[field]
         if (isDate) {
-            const v = String(rawVal || '')
-            const v1 = String(val1 || '')
-            const v2 = String(val2 || '')
+            const v = String(rawVal || ''), v1 = String(val1 || ''), v2 = String(val2 || '')
             switch (operator) {
                 case "eq": return v === v1
                 case "neq": return v !== v1
@@ -126,9 +143,7 @@ export const useMasterCrud = (config: MasterConfig) => {
                 default: return true
             }
         } else {
-            const v = parseFloat(rawVal) || 0
-            const v1 = parseFloat(val1) || 0
-            const v2 = parseFloat(val2) || 0
+            const v = parseFloat(rawVal) || 0, v1 = parseFloat(val1) || 0, v2 = parseFloat(val2) || 0
             switch (operator) {
                 case "eq": return v === v1
                 case "neq": return v !== v1
@@ -142,9 +157,7 @@ export const useMasterCrud = (config: MasterConfig) => {
         }
     }
 
-    /**
-     * Generate filter options dari allData
-     */
+    // ==================== BUILD FILTER CACHE ====================
     const buildFilterCache = () => {
         const cache: Record<string, any[]> = {}
 
@@ -168,10 +181,8 @@ export const useMasterCrud = (config: MasterConfig) => {
         filterOptionsCache.value = cache
     }
 
-    /**
-     * Filter all data & paginate
-     */
-    const applyFiltersAndPaginate = () => {
+    // ==================== FILTERED DATA ====================
+    const filteredData = computed(() => {
         let result = [...allData.value]
 
         // Global search
@@ -212,8 +223,7 @@ export const useMasterCrud = (config: MasterConfig) => {
             const isDate = col?.type === 'date'
             const isNum = col?.type === 'number' || col?.type === 'currency'
             result.sort((a, b) => {
-                let valA = a[sortField.value!]
-                let valB = b[sortField.value!]
+                let valA = a[sortField.value!], valB = b[sortField.value!]
                 if (isDate) {
                     valA = valA ? new Date(valA).getTime() : 0
                     valB = valB ? new Date(valB).getTime() : 0
@@ -236,67 +246,67 @@ export const useMasterCrud = (config: MasterConfig) => {
         if (pagination.page > pagination.lastPage) pagination.page = pagination.lastPage
         if (pagination.page < 1) pagination.page = 1
 
-        // Paginate
+        return result
+    })
+
+    // ==================== PAGINATED ITEMS ====================
+    const applyPagination = () => {
         const start = (pagination.page - 1) * pagination.perPage
         const end = start + pagination.perPage
-        items.value = result.slice(start, end)
+        items.value = filteredData.value.slice(start, end)
     }
 
-    /**
-     * Fetch all detail data
-     */
+    // ==================== FETCH ALL DETAIL ====================
     const fetchAllDetailData = async () => {
         if (!config.expansion?.enabled || !config.expansion?.endpoint) return
         try {
-            const response = await $api.get(config.expansion.endpoint)
-            if (response.data.success) {
-                const grouped: Record<string, any[]> = {}
-                response.data.data.forEach((item: any) => {
-                    const key = item[config.primaryKey] || item.Kode
-                    if (!grouped[key]) grouped[key] = []
-                    grouped[key].push(item)
-                })
-                detailDataCache.value = grouped
+            // Endpoint: /v1/so/{id}/detail → kita butuh endpoint tanpa {id}
+            // Untuk SO: /v1/so/all-detail (atau kita fetch satu per satu)
+            // 🔥 Fetch detail untuk semua item di allData
+            const ids = allData.value.map(d => d[config.primaryKey])
+
+            // Batch fetch (max 10 paralel)
+            const batchSize = 10
+            for (let i = 0; i < ids.length; i += batchSize) {
+                const batch = ids.slice(i, i + batchSize)
+                await Promise.all(batch.map(async (id) => {
+                    if (detailDataCache.value[id]) return
+                    try {
+                        const endpoint = config.expansion!.endpoint.replace('{id}', id)
+                        const res = await $api.get(endpoint)
+                        if (res.data.success) {
+                            detailDataCache.value[id] = res.data.data
+                        }
+                    } catch (e) { console.error(`Detail error for ${id}:`, e) }
+                }))
             }
+            console.log('✅ Detail preloaded:', Object.keys(detailDataCache.value).length, 'items')
         } catch (error) {
-            console.error('Failed to preload detail data:', error)
+            console.error('Failed to preload detail:', error)
         }
     }
 
-    /**
-     * Fetch ALL data from API
-     */
+    // ==================== FETCH ALL DATA ====================
     const fetchAllData = async () => {
         loading.value = true
         try {
             const params: any = { per_page: 9999 }
 
-            const promises: Promise<any>[] = [$api.get(config.endpoint, { params })]
-            if (config.expansion?.enabled && config.expansion?.endpoint) {
-                promises.push($api.get(config.expansion.endpoint))
+            const response = await $api.get(config.endpoint, { params })
+
+            if (response.data.success) {
+                allData.value = response.data.data
+                pagination.total = response.data.pagination?.total || allData.value.length
+
+                // Build filter cache
+                buildFilterCache()
+
+                // Apply filter + pagination
+                applyPagination()
+
+                // Preload detail (background)
+                fetchAllDetailData()
             }
-
-            const [headerResponse, detailResponse] = await Promise.all(promises)
-
-            if (headerResponse.data.success) {
-                allData.value = headerResponse.data.data
-                pagination.total = headerResponse.data.pagination?.total || allData.value.length
-            }
-
-            if (detailResponse && detailResponse.data.success) {
-                const grouped: Record<string, any[]> = {}
-                detailResponse.data.data.forEach((item: any) => {
-                    const key = item[config.primaryKey] || item.Kode
-                    if (!grouped[key]) grouped[key] = []
-                    grouped[key].push(item)
-                })
-                detailDataCache.value = grouped
-            }
-
-            // 🔥 Build filter cache dari data
-            buildFilterCache()
-
-            applyFiltersAndPaginate()
         } catch (error: any) {
             console.error('Fetch error:', error)
             toast.add({
@@ -311,8 +321,12 @@ export const useMasterCrud = (config: MasterConfig) => {
     }
 
     const fetchData = async () => { await fetchAllData() }
-    const refreshData = () => { applyFiltersAndPaginate() }
 
+    const refreshData = () => {
+        applyPagination()
+    }
+
+    // ==================== DELETE ====================
     const handleDelete = async () => {
         if (!deleteItem.value) return
         deleteLoading.value = true
@@ -331,6 +345,7 @@ export const useMasterCrud = (config: MasterConfig) => {
         }
     }
 
+    // ==================== HELPERS ====================
     const formatCurrency = (value: number) => {
         if (!value && value !== 0) return '-'
         return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(value)
@@ -341,46 +356,13 @@ export const useMasterCrud = (config: MasterConfig) => {
         return new Date(value).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
     }
 
-    // 🔥 Init permission
-    const initPermission = () => {
-        const baseRoute = config.formRoute?.replace('/form', '') || config.endpoint.replace('/v1', '')
-
-        console.log('🔑 Permission check:')
-        console.log('  config.formRoute:', config.formRoute)
-        console.log('  baseRoute:', baseRoute)
-
-        const menuId = getMenuIdByRoute(baseRoute)
-        console.log('  menuId:', menuId)
-
-        if (menuId) {
-            const hak = checkAccess(menuId)
-            console.log('  hak:', hak)
-            canInsert.value = hak.insert
-            canEdit.value = hak.edit
-            canDelete.value = hak.delete
-        } else {
-            console.warn('⚠️ Menu not found for route:', baseRoute)
-        }
-    }
-
+    // Init
     initPermission()
-
-    // 🔥 Guard functions
-    const guardAction = (action: 'insert' | 'edit' | 'delete'): boolean => {
-        const map = { insert: canInsert, edit: canEdit, delete: canDelete }
-        const labels = { insert: 'menambah', edit: 'mengedit', delete: 'menghapus' }
-
-        if (!map[action].value) {
-            permMessage.value = `Anda tidak memiliki hak untuk ${labels[action]} data.`
-            showPermDialog.value = true
-            return false
-        }
-        return true
-    }
 
     return {
         items,
         allData,
+        filteredData,
         selectedItems,
         loading,
         pagination,
@@ -394,17 +376,15 @@ export const useMasterCrud = (config: MasterConfig) => {
         deleteVisible,
         deleteItem,
         deleteLoading,
-        fetchData,
+        canInsert,
+        canEdit,
+        canDelete,
         fetchAllData,
+        fetchData,
         refreshData,
         handleDelete,
         formatCurrency,
         formatDate,
-        // Permission
-        canInsert,
-        canEdit,
-        canDelete,
-        showPermDialog,
-        permMessage,
+        applyPagination,
     }
 }

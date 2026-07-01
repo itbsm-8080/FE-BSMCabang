@@ -132,6 +132,7 @@ export const barangMasterConfig: MasterConfig = {
     endpoint: '/v1/barang',
     primaryKey: 'Kode',
     formRoute: '/persediaan/barang/form',
+    showPeriod: false,
     columns: barangColumns,
     formFields: barangFormFields,
     expansion: {

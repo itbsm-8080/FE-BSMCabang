@@ -356,6 +356,7 @@ const onRowExpand = async (e: any) => {
         detailLoading.value[id] = false
     }
 }
+
 const onRowCollapse = (e: any) => {}
 
 // Navigation
